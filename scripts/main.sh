@@ -16,18 +16,28 @@ declare -r OPT_SUBDOMAIN="$(get_tmux_option "@1password-subdomain" "my")"
 declare -r OPT_VAULT="$(get_tmux_option "@1password-vault" "")"
 declare -r OPT_COPY_TO_CLIPBOARD="$(get_tmux_option "@1password-copy-to-clipboard" "off")"
 declare -r OPT_ITEMS_JQ_FILTER="$(get_tmux_option "@1password-items-jq-filter" "")"
+declare -r OPT_DEBUG="$(get_tmux_option "@1password-debug" "off")"
 
 declare spinner_pid=""
 
 # ------------------------------------------------------------------------------
 
 spinner_start() {
+  if [[ "$OPT_DEBUG" == "on" ]]; then
+    echo "... $1"
+    return
+  fi
+
   tput civis
   show_spinner "$1" &
   spinner_pid=$!
 }
 
 spinner_stop() {
+  if [[ "$OPT_DEBUG" == "on" ]]; then
+    return
+  fi
+
   tput cnorm
   kill "$spinner_pid" &> /dev/null
   spinner_pid=""
@@ -47,9 +57,11 @@ op_get_session() {
 get_op_items() {
 
   # The structure (we need) looks like the following:
+  #
   # [
   #   {
   #     "uuid": "some-long-uuid",
+  #     "templateUuid": "001",
   #     "overview": {
   #       "URLs": [
   #         { "u": "sudolikeaboss://local" }
@@ -59,6 +71,10 @@ get_op_items() {
   #     }
   #   }
   # ]
+  #
+  # Where `templateUuid` is:
+  #   - `"001"` for a login item
+  #   - `"005"` for a password item
 
   local JQ_FILTER
 
@@ -67,7 +83,12 @@ get_op_items() {
   else
     JQ_FILTER="
       .[]
-      | [select(.overview.URLs | map(select(.u)) | length == 1)?]
+      | [
+          select(
+            (.templateUuid == \"001\" and (.overview.URLs | map(select(.u)) | length >= 1)) or
+            (.templateUuid == \"005\")
+          )?
+        ]
       | map([ .overview.title, .uuid ]
       | join(\",\"))
       | .[]
@@ -196,6 +217,11 @@ main() {
 
       # Use `send-keys`
       tmux send-keys -t "$ACTIVE_PANE" "$selected_item_password"
+    fi
+
+    if [[ "$OPT_DEBUG" == "on" ]]; then
+      echo "tmux-1password: @1password-debug is on. Press [ENTER] to continue."
+      read -r
     fi
   fi
 }

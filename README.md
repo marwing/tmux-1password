@@ -120,12 +120,15 @@ Default: `'off'`
 By default, all of the items will be shown. If complete customization of url filtering is required,
 a `jq` filter can be provided to filter and map items.
 
-Items come in the following format from which the filter operates:
+Items comes from the [`op list items`
+command](https://support.1password.com/command-line/#list-objects) in the following format, from
+which the filter operates:
 
 ```json
 [
   {
     "uuid": "some-long-uuid",
+    "templateUuid": "001",
     "overview": {
       "URLs": [
         { "u": "sudolikeaboss://local" }
@@ -170,6 +173,19 @@ set -g @1password-items-jq-filter ' \
   | join(",")) \
   | .[] \
 '
+```
+
+#### Debug mode
+
+If you're having any trouble with the plugin and would like to debug it's output in a more
+convenient way, this option will prevent the pane from being closed.
+
+```sh
+set -g @1password-debug 'on'
+
+# Or running the following withing tmux:
+tmux set-option -g @1password-debug "on"
+
 ```
 
 ## Prior art
